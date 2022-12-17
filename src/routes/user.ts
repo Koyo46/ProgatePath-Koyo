@@ -73,13 +73,10 @@ userRouter.get("/:userId", ensureAuthUser, async (req, res, next) => {
 });
 
 /** A page to list all tweets liked by a user */
-userRouter.get("/:userId/likes", async (req, res, next) => {
+userRouter.get("/:userId/likes", ensureAuthUser, async (req, res, next) => {
   const { userId } = req.params;
   const user = await User.find(Number(userId));
   if (!user) return next(new Error("Invalid error: The user is undefined."));
-  if (!(req.authentication?.hasSignedin)) {
-    res.redirect("/signin");
-  }
   const posts = await user.likedPosts();
   const postsWithUser = await Promise.all(
     posts.map(async post => {
