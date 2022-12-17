@@ -1,16 +1,13 @@
-import express, {RequestHandler} from "express";
-import {join} from "path";
-import multer from "multer";
-import {nanoid} from "nanoid";
-import {User} from "@/models/user";
-import {
-  isUniqueEmail,
-  ensureAuthUser,
-  forbidAuthUser,
-} from "@/middlewares/authentication";
-import {ensureCorrectUser} from "@/middlewares/current_user";
-import {body, validationResult} from "express-validator";
-import {HashPassword} from "@/lib/hash_password";
+import express, { RequestHandler } from 'express';
+import { body, validationResult } from 'express-validator';
+import multer from 'multer';
+import { nanoid } from 'nanoid';
+import { join } from 'path';
+
+import { HashPassword } from '@/lib/hash_password';
+import { ensureAuthUser, forbidAuthUser, isUniqueEmail } from '@/middlewares/authentication';
+import { ensureCorrectUser } from '@/middlewares/current_user';
+import { User } from '@/models/user';
 
 export const userRouter = express.Router();
 
@@ -31,7 +28,7 @@ userRouter.post(
   body("password", "Password can't be blank").notEmpty(),
   body("email").custom(isUniqueEmail),
   async (req, res) => {
-    const {name, email, password} = req.body;
+    const { name, email, password } = req.body;
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.render("users/new", {
@@ -55,7 +52,7 @@ userRouter.post(
 
 /** A page to show user details */
 userRouter.get("/:userId", ensureAuthUser, async (req, res, next) => {
-  const {userId} = req.params;
+  const { userId } = req.params;
   const user = await User.find(Number(userId));
   if (!user) return next(new Error("Invalid error: The user is undefined."));
   const posts = await user.posts();
@@ -77,9 +74,12 @@ userRouter.get("/:userId", ensureAuthUser, async (req, res, next) => {
 
 /** A page to list all tweets liked by a user */
 userRouter.get("/:userId/likes", async (req, res, next) => {
-  const {userId} = req.params;
+  const { userId } = req.params;
   const user = await User.find(Number(userId));
   if (!user) return next(new Error("Invalid error: The user is undefined."));
+  if (!(req.authentication?.hasSignedin)) {
+    res.redirect("/signin");
+  }
   const posts = await user.likedPosts();
   const postsWithUser = await Promise.all(
     posts.map(async post => {
@@ -103,7 +103,7 @@ userRouter.get(
   ensureAuthUser,
   ensureCorrectUser,
   async (req, res) => {
-    const {userId} = req.params;
+    const { userId } = req.params;
     const user = await User.find(Number(userId));
     res.render("users/edit", {
       user,
@@ -170,8 +170,8 @@ userRouter.patch(
   body("name", "Name can't be blank").notEmpty(),
   body("email", "Email can't be blank").notEmpty(),
   async (req, res, next) => {
-    const {userId} = req.params;
-    const {name, email} = req.body;
+    const { userId } = req.params;
+    const { name, email } = req.body;
 
     const errors = validationResult(req);
     if (!errors.isEmpty() || req.uploadError) {
@@ -191,7 +191,7 @@ userRouter.patch(
 
     const user = await User.find(Number(userId));
     if (!user) return next(new Error("Invalid error: The user is undefined."));
-    Object.assign(user, {name, email});
+    Object.assign(user, { name, email });
     if (req.file) {
       user.imageName = req.file.path.replace("public", "");
     } else {
